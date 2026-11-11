@@ -1,0 +1,4 @@
+INFO     EnterpriseQA:test_auth.py:21 Executing test scenario: TC02_Invalid_Password with user: tomsmith
+INFO     EnterpriseQA:base_page.py:9 Navigating to: https://the-internet.herokuapp.com/login
+INFO     EnterpriseQA:test_auth.py:21 Executing test scenario: TC02_Invalid_Password with user: tomsmith
+INFO     EnterpriseQA:base_page.py:9 Navigating to: https://the-internet.herokuapp.com/login

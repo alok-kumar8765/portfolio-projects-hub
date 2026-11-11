@@ -1,0 +1,2 @@
+INFO     EnterpriseQA:api_client.py:11 API GET request to: /secure
+INFO     EnterpriseQA:api_client.py:13 API Response Status: 200

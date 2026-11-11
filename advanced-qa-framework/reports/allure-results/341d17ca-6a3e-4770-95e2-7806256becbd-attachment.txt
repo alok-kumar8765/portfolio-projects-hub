@@ -1,0 +1,2 @@
+2026-11-10 15:50:54 [INFO] [test_auth.py:21] - Executing test scenario: TC02_Invalid_Password with user: tomsmith
+2026-11-10 15:50:54 [INFO] [base_page.py:9] - Navigating to: https://the-internet.herokuapp.com/login

@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Code Security Scanner</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for Donut and Bar Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts Inter & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a',
+            },
+            dark: {
+              bg: '#0b0f19',
+              card: '#111827',
+              border: '#1f2937',
+              hover: '#1e293b',
+              accent: '#0066ff'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f2937;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #374151;
+    }
+    /* Editor styling */
+    .editor-line-numbers {
+      user-select: none;
+    }
+    .code-textarea {
+      tab-size: 4;
+    }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-gray-200 font-sans min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- TOP HEADER BAR -->
+  <header class="h-16 bg-[#111827] border-b border-gray-800 px-4 flex items-center justify-between shrink-0 z-20">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+          AI Code <span class="text-blue-500">Security Scanner</span>
+        </h1>
+        <p class="text-xs text-gray-400 hidden sm:block">Detect Vulnerabilities • Analyze Code • Get Security Suggestions</p>
+      </div>
+    </div>
+
+    <!-- Top Action Toolbar -->
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <button id="openFolderBtn" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded-lg transition flex items-center gap-2 border border-gray-700">
+        <i class="fa-solid fa-folder-open text-blue-400"></i>
+        <span class="hidden md:inline">Open Folder</span>
+      </button>
+
+      <button id="scanProjectBtn" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-2 shadow-md shadow-indigo-600/30">
+        <i class="fa-solid fa-play"></i>
+        <span>Scan Project</span>
+      </button>
+
+      <button id="scanFileBtn" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-2 shadow-md shadow-blue-600/30">
+        <i class="fa-solid fa-[#0066ff] fa-bolt"></i>
+        <span>Scan File</span>
+      </button>
+
+      <button id="generateReportBtn" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition flex items-center gap-2 shadow-md shadow-emerald-600/30">
+        <i class="fa-solid fa-file-arrow-down"></i>
+        <span class="hidden md:inline">Generate Report</span>
+      </button>
+
+      <div class="h-6 w-px bg-gray-800 mx-1"></div>
+
+      <!-- Theme Switcher -->
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-moon text-gray-400 text-xs"></i>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="themeToggle" class="sr-only peer" checked>
+          <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN BODY LAYOUT -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- LEFT SIDEBAR NAVIGATION -->
+    <aside class="w-16 md:w-56 bg-[#0e1422] border-r border-gray-800 flex flex-col justify-between shrink-0">
+      <nav class="p-2 space-y-1">
+        <button data-target="tab-dashboard" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white shadow-md shadow-blue-600/20">
+          <i class="fa-solid fa-house w-5 text-center"></i>
+          <span class="hidden md:inline">Dashboard</span>
+        </button>
+
+        <button data-target="tab-scan" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+          <i class="fa-solid fa-magnifying-glass-code w-5 text-center"></i>
+          <span class="hidden md:inline">Scan Code</span>
+        </button>
+
+        <button data-target="tab-results" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+          <i class="fa-solid fa-list-check w-5 text-center"></i>
+          <span class="hidden md:inline">Results</span>
+        </button>
+
+        <button data-target="tab-tips" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+          <i class="fa-solid fa-lightbulb w-5 text-center"></i>
+          <span class="hidden md:inline">Security Tips</span>
+        </button>
+
+        <button data-target="tab-fixes" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+          <i class="fa-solid fa-wand-magic-sparkles w-5 text-center"></i>
+          <span class="hidden md:inline">Fix Suggestions</span>
+        </button>
+      </nav>
+
+      <div class="p-2 space-y-1 border-t border-gray-800/80">
+        <button data-target="tab-settings" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+          <i class="fa-solid fa-gear w-5 text-center"></i>
+          <span class="hidden md:inline">Settings</span>
+        </button>
+        <button data-target="tab-about" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition">
+          <i class="fa-solid fa-circle-info w-5 text-center"></i>
+          <span class="hidden md:inline">About</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- CONTENT AREA (QUADRANT LAYOUT) -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 grid-rows-12 gap-3 p-3 overflow-y-auto">
+
+      <!-- TOP-LEFT: CODE EDITOR PANE (7 cols, 6 rows) -->
+      <section class="lg:col-span-7 row-span-6 bg-[#111827] border border-gray-800 rounded-xl flex flex-col overflow-hidden shadow-lg">
+        <!-- Editor Tabs -->
+        <div class="bg-[#0e1422] border-b border-gray-800 px-3 flex items-center justify-between h-10 shrink-0">
+          <div class="flex items-center space-x-1" id="fileTabs">
+            <button data-file="app.py" class="file-tab active bg-[#111827] border-t-2 border-blue-500 text-white px-3 py-1.5 text-xs font-mono flex items-center gap-2 rounded-t">
+              <i class="fa-brands fa-python text-yellow-400"></i>
+              <span>app.py</span>
+            </button>
+            <button data-file="utils.py" class="file-tab text-gray-400 hover:text-gray-200 px-3 py-1.5 text-xs font-mono flex items-center gap-2 rounded-t">
+              <i class="fa-brands fa-python text-blue-400"></i>
+              <span>utils.py</span>
+            </button>
+          </div>
+          <div class="flex items-center space-x-2 text-gray-400 text-xs">
+            <button id="addFileBtn" title="New File" class="p-1 hover:text-white"><i class="fa-solid fa-plus"></i></button>
+            <button id="formatCodeBtn" title="Format Code" class="p-1 hover:text-white"><i class="fa-solid fa-align-left"></i></button>
+            <span class="text-gray-600">|</span>
+            <span class="font-mono text-[11px] text-gray-400" id="editorFileInfo">Python 3.11</span>
+          </div>
+        </div>
+
+        <!-- Code Area -->
+        <div class="flex-1 flex overflow-hidden font-mono text-xs relative bg-[#0d1117]">
+          <!-- Line Numbers -->
+          <div id="lineNumbers" class="w-10 bg-[#0b0f19] text-gray-600 py-3 text-right pr-2 select-none font-mono text-xs border-r border-gray-800/60 leading-5">
+            1
+          </div>
+          <!-- Code Textarea -->
+          <textarea id="codeEditor" spellcheck="false" class="flex-1 bg-transparent text-gray-200 p-3 outline-none resize-none leading-5 font-mono text-xs whitespace-pre tab-4"></textarea>
+        </div>
+      </section>
+
+      <!-- TOP-RIGHT: SECURITY SUMMARY PANE (5 cols, 6 rows) -->
+      <section class="lg:col-span-5 row-span-6 bg-[#111827] border border-gray-800 rounded-xl p-3 flex flex-col space-y-3 shadow-lg overflow-y-auto">
+        
+        <div class="flex items-center justify-between border-b border-gray-800 pb-2 shrink-0">
+          <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+            <i class="fa-solid fa-shield-cat text-blue-400"></i> Security Summary
+          </h2>
+          <span class="text-[11px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-mono">Live Audit</span>
+        </div>
+
+        <!-- Severity Counter Cards Grid -->
+        <div class="grid grid-cols-4 gap-2 shrink-0">
+          <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <div class="flex items-center gap-1 text-red-400 text-xs font-semibold">
+              <i class="fa-solid fa-circle-exclamation"></i> Critical
+            </div>
+            <span id="countCritical" class="text-xl font-bold text-red-500 mt-1">6</span>
+          </div>
+
+          <div class="bg-orange-500/10 border border-orange-500/20 rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <div class="flex items-center gap-1 text-orange-400 text-xs font-semibold">
+              <i class="fa-solid fa-triangle-exclamation"></i> High
+            </div>
+            <span id="countHigh" class="text-xl font-bold text-orange-400 mt-1">8</span>
+          </div>
+
+          <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <div class="flex items-center gap-1 text-amber-400 text-xs font-semibold">
+              <i class="fa-solid fa-circle-info"></i> Medium
+            </div>
+            <span id="countMedium" class="text-xl font-bold text-amber-400 mt-1">5</span>
+          </div>
+
+          <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 flex flex-col items-center justify-center text-center">
+            <div class="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+              <i class="fa-solid fa-circle-check"></i> Low
+            </div>
+            <span id="countLow" class="text-xl font-bold text-emerald-400 mt-1">2</span>
+          </div>
+        </div>
+
+        <!-- Metric Summaries Bar -->
+        <div class="grid grid-cols-3 gap-2 bg-[#0b0f19] p-2 rounded-lg border border-gray-800/80 text-xs shrink-0">
+          <div>
+            <span class="text-gray-400 block text-[10px]">Total Issues</span>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span id="statTotalIssues" class="font-bold text-white text-base">21</span>
+              <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                <div id="statProgressBar" class="bg-red-500 h-full w-[70%]"></div>
+              </div>
+            </div>
+          </div>
+          <div class="border-l border-gray-800 pl-2">
+            <span class="text-gray-400 block text-[10px]">Files Scanned</span>
+            <div class="flex items-center gap-1.5 mt-0.5 text-white font-bold text-sm">
+              <i class="fa-solid fa-folder text-blue-400 text-xs"></i>
+              <span id="statFilesScanned">8</span>
+            </div>
+          </div>
+          <div class="border-l border-gray-800 pl-2">
+            <span class="text-gray-400 block text-[10px]">Lines of Code</span>
+            <div class="flex items-center gap-1.5 mt-0.5 text-white font-bold text-sm">
+              <i class="fa-solid fa-code text-indigo-400 text-xs"></i>
+              <span id="statLinesOfCode">1,284</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Analytics Section (Charts) -->
+        <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[140px] items-center">
+          <!-- Donut Chart -->
+          <div class="flex flex-col items-center justify-center relative h-full">
+            <span class="text-[11px] font-medium text-gray-400 mb-1">Issue Distribution</span>
+            <div class="w-28 h-28 relative">
+              <canvas id="donutChart"></canvas>
+            </div>
+          </div>
+          <!-- Bar Chart / Breakdown -->
+          <div class="flex flex-col justify-center h-full">
+            <span class="text-[11px] font-medium text-gray-400 mb-1">Issue Types</span>
+            <div class="w-full h-28 relative">
+              <canvas id="barChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- BOTTOM-LEFT: SCAN RESULTS TABLE (7 cols, 6 rows) -->
+      <section class="lg:col-span-7 row-span-6 bg-[#111827] border border-gray-800 rounded-xl flex flex-col overflow-hidden shadow-lg">
+        <!-- Section Tabs -->
+        <div class="bg-[#0e1422] border-b border-gray-800 px-3 flex items-center justify-between h-10 shrink-0">
+          <div class="flex items-center space-x-1">
+            <button class="bg-[#111827] border-t-2 border-red-500 text-white px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 rounded-t">
+              <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+              <span>Scan Results (<span id="resultsBadgeCount">21</span>)</span>
+            </button>
+            <button id="tabQuickFixes" class="text-gray-400 hover:text-gray-200 px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+              <span>Fix Suggestions</span>
+            </button>
+            <button id="tabTerminal" class="text-gray-400 hover:text-gray-200 px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
+              <i class="fa-solid fa-terminal text-emerald-400"></i>
+              <span>Terminal Output</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="tableFilter" placeholder="Filter issues..." class="bg-[#0b0f19] border border-gray-800 text-gray-300 text-[11px] px-2 py-0.5 rounded outline-none focus:border-blue-500 w-32">
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="flex-1 overflow-y-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-[#0b0f19] text-gray-400 sticky top-0 border-b border-gray-800 z-10 font-mono text-[11px]">
+              <tr>
+                <th class="py-2 px-3 w-10 text-center">#</th>
+                <th class="py-2 px-3 w-24">Severity</th>
+                <th class="py-2 px-3">Issue Type</th>
+                <th class="py-2 px-3 w-20">File</th>
+                <th class="py-2 px-3 w-14 text-center">Line</th>
+                <th class="py-2 px-3">Description</th>
+              </tr>
+            </thead>
+            <tbody id="vulnTableBody" class="divide-y divide-gray-800/50 font-mono">
+              <!-- Dynamically Populated Rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- BOTTOM-RIGHT: DETAILED INFORMATION PANEL (5 cols, 6 rows) -->
+      <section class="lg:col-span-5 row-span-6 bg-[#111827] border border-gray-800 rounded-xl flex flex-col overflow-hidden shadow-lg">
+        <!-- Panel Tabs -->
+        <div class="bg-[#0e1422] border-b border-gray-800 px-3 flex items-center justify-between h-10 shrink-0">
+          <div class="flex items-center space-x-1" id="detailTabs">
+            <button data-detail-tab="details" class="detail-tab bg-[#111827] border-t-2 border-blue-500 text-white px-3 py-1.5 text-xs font-medium rounded-t">
+              Details
+            </button>
+            <button data-detail-tab="recommendation" class="detail-tab text-gray-400 hover:text-gray-200 px-3 py-1.5 text-xs font-medium rounded-t">
+              Recommendation
+            </button>
+            <button data-detail-tab="example" class="detail-tab text-gray-400 hover:text-gray-200 px-3 py-1.5 text-xs font-medium rounded-t">
+              Secure Code Example
+            </button>
+          </div>
+          <span class="text-xs text-red-400 flex items-center gap-1 font-mono" id="detailHeaderMeta">
+            <i class="fa-solid fa-triangle-exclamation"></i> Critical
+          </span>
+        </div>
+
+        <!-- Detail Content Box -->
+        <div class="flex-1 p-3 overflow-y-auto text-xs space-y-3">
+          
+          <!-- Header Meta Info -->
+          <div>
+            <div class="flex items-center justify-between">
+              <h3 id="detailTitle" class="text-sm font-bold text-white">Issue: Command Injection</h3>
+            </div>
+            <div class="text-gray-400 text-[11px] mt-0.5 font-mono flex items-center gap-3">
+              <span>File: <strong id="detailFile" class="text-blue-400">app.py</strong></span>
+              <span>Line: <strong id="detailLine" class="text-yellow-400">11</strong></span>
+              <span>Severity: <span id="detailSeverityBadge" class="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded border border-red-500/30">Critical</span></span>
+            </div>
+          </div>
+
+          <!-- Description Section -->
+          <div>
+            <h4 class="text-gray-400 text-[11px] font-semibold uppercase tracking-wider mb-1">Description</h4>
+            <p id="detailDescription" class="text-gray-300 leading-relaxed bg-[#0b0f19] p-2.5 rounded-lg border border-gray-800">
+              User input is executed directly in a shell command. This allows malicious users to append commands and execute arbitrary code on the underlying host operating system.
+            </p>
+          </div>
+
+          <!-- Vulnerable Code Snippet -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="text-red-400 text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1">
+                <i class="fa-solid fa-bug"></i> Vulnerable Code
+              </h4>
+              <button onclick="copySnippet('detailVulnerableCode')" class="text-gray-400 hover:text-white text-[10px] flex items-center gap-1">
+                <i class="fa-regular fa-copy"></i> Copy
+              </button>
+            </div>
+            <pre class="bg-[#080b11] text-red-300 p-2.5 rounded-lg font-mono text-[11px] border border-red-900/40 overflow-x-auto whitespace-pre" id="detailVulnerableCode">result = subprocess.check_output(cmd, shell=True)</pre>
+          </div>
+
+          <!-- Fix Suggestion -->
+          <div>
+            <h4 class="text-gray-400 text-[11px] font-semibold uppercase tracking-wider mb-1">Fix Suggestion</h4>
+            <p id="detailFixSuggestion" class="text-gray-300 leading-relaxed bg-[#0b0f19] p-2.5 rounded-lg border border-gray-800">
+              Avoid using shell=True. Pass command arguments as a list or sanitize input strictly using shlex.split().
+            </p>
+          </div>
+
+          <!-- Secure Code Example Snippet -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="text-emerald-400 text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1">
+                <i class="fa-solid fa-shield-check"></i> Secure Code Example
+              </h4>
+              <button onclick="copySnippet('detailSecureCode')" class="text-gray-400 hover:text-white text-[10px] flex items-center gap-1">
+                <i class="fa-regular fa-copy"></i> Copy
+              </button>
+            </div>
+            <pre class="bg-[#080b11] text-emerald-300 p-2.5 rounded-lg font-mono text-[11px] border border-emerald-900/40 overflow-x-auto whitespace-pre" id="detailSecureCode">import shlex
+# Safe execution without shell=True
+args = shlex.split(cmd)
+result = subprocess.check_output(args, shell=False)</pre>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- REPORT MODAL -->
+  <div id="reportModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-[#111827] border border-gray-800 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl p-4">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-file-shield text-emerald-400"></i> Code Security Audit Report
+        </h3>
+        <button id="closeReportBtn" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto py-4 font-mono text-xs space-y-4 text-gray-300" id="reportContent">
+        <!-- Generated Dynamically -->
+      </div>
+
+      <div class="border-t border-gray-800 pt-3 flex items-center justify-between">
+        <span class="text-gray-500 text-xs">Generated by AI Code Security Scanner</span>
+        <div class="flex space-x-2">
+          <button id="downloadReportTextBtn" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-medium">Download .TXT</button>
+          <button id="closeReportModalBottom" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs font-medium">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC & SECURITY SCANNER ENGINE -->
+  <script>
+    // --- FILES & DEFAULT STATE ---
+    const fileStore = {
+      'app.py': `import os
+import subprocess
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/run', methods=['GET'])
+def run_command():
+    cmd = request.args.get("cmd")
+    # Dangerous: executing user input
+    result = subprocess.check_output(cmd, shell=True)
+    return str(result)
+
+def read_file(filename):
+    with open(filename, 'r') as f:
+        return f.read()
+
+password = "admin123" # hardcoded password
+api_key = "sk-1234567890abcdef" # hardcoded API key
+
+if __name__ == '__main__':
+    app.run(debug=True)`,
+      
+      'utils.py': `import sys
+import os
+
+def log_debug_info(user_token, secret):
+    print("DEBUG:", user_token, secret) # Potential info leakage
+
+def system_eval(expr):
+    return eval(expr) # Insecure dynamic evaluation
+`
+    };
+
+    let activeFile = 'app.py';
+    let vulnerabilities = [];
+    let selectedVulnIndex = 0;
+    let donutChartInstance = null;
+    let barChartInstance = null;
+
+    // --- RULES DEFINITION ENGINE ---
+    const SECURITY_RULES = [
+      {
+        id: 'CMD_INJ',
+        type: 'Command Injection',
+        severity: 'Critical',
+        regex: /(subprocess\.(check_output|call|Popen|run)\(.*shell\s*=\s*True.*\)|os\.system\(|os\.popen\()/g,
+        description: 'User input or dynamic string executed in shell command (shell=True). Risk of arbitrary system execution.',
+        recommendation: 'Avoid shell=True. Use a list of string arguments and disable shell execution.',
+        secureExample: `import shlex\ncmd_list = shlex.split(user_input)\nsubprocess.check_output(cmd_list, shell=False)`
+      },
+      {
+        id: 'EVAL_INJ',
+        type: 'Code Injection',
+        severity: 'Critical',
+        regex: /(eval\(|exec\()/g,
+        description: 'Dynamic execution of strings via eval() or exec() can allow remote code execution.',
+        recommendation: 'Replace eval/exec with safe alternatives like ast.literal_eval() or explicit parsing.',
+        secureExample: `import ast\nsafe_data = ast.literal_eval(user_string)`
+      },
+      {
+        id: 'HARD_PASS',
+        type: 'Hardcoded Secrets',
+        severity: 'High',
+        regex: /(password\s*=\s*["'][^"']+["']|passwd\s*=\s*["'][^"']+["'])/g,
+        description: 'Hardcoded password string found directly in source code.',
+        recommendation: 'Store sensitive passwords in environment variables or a secret vault (e.g. HashiCorp Vault).',
+        secureExample: `import os\npassword = os.getenv("DB_PASSWORD")`
+      },
+      {
+        id: 'HARD_KEY',
+        type: 'Hardcoded Secrets',
+        severity: 'High',
+        regex: /(api_key\s*=\s*["'][^"']+["']|secret_key\s*=\s*["'][^"']+["']|token\s*=\s*["']sk-[^"']+["'])/g,
+        description: 'Hardcoded API Key or Secret Token detected.',
+        recommendation: 'Load secrets dynamically from environment variables at runtime.',
+        secureExample: `import os\napi_key = os.getenv("API_KEY")`
+      },
+      {
+        id: 'FLASK_DEBUG',
+        type: 'Debug Mode Enabled',
+        severity: 'High',
+        regex: /(app\.run\(.*debug\s*=\s*True.*\))/g,
+        description: 'Flask application is configured to run with debug mode enabled.',
+        recommendation: 'Disable debug mode in production to prevent arbitrary code execution via interactive debugger.',
+        secureExample: `if __name__ == '__main__':\n    app.run(debug=False)`
+      },
+      {
+        id: 'UNSAFE_FILE',
+        type: 'Insecure File Access',
+        severity: 'Medium',
+        regex: /(open\(filename|open\(path|with\s+open\(request)/g,
+        description: 'File path specified dynamically without directory traversal sanitization.',
+        recommendation: 'Sanitize file paths using os.path.basename or werkzeug.utils.secure_filename.',
+        secureExample: `from werkzeug.utils import secure_filename\nsafe_path = secure_filename(filename)`
+      },
+      {
+        id: 'INSECURE_IMPORT',
+        type: 'Insecure Imports',
+        severity: 'Medium',
+        regex: /(import\s+pickle|import\s+telnetlib|import\s+ftplib)/g,
+        description: 'Module flagged as inherently insecure (e.g., unpickling untrusted data or unencrypted protocols).',
+        recommendation: 'Use secure serialized formats (JSON) and encrypted communications (TLS/SSH).',
+        secureExample: `import json\ndata = json.loads(payload)`
+      },
+      {
+        id: 'INFO_EXP',
+        type: 'Information Exposure',
+        severity: 'Low',
+        regex: /(print\(.*secret.*|print\(.*token.*|logger\.debug\(.*pass.*)/gi,
+        description: 'Potential logging or printing of confidential variables or tokens.',
+        recommendation: 'Redact sensitive keys and parameters before logging to stdout or log files.',
+        secureExample: `logger.debug("Token length: %d", len(user_token))`
+      }
+    ];
+
+    // --- DOM ELEMENTS ---
+    const codeEditor = document.getElementById('codeEditor');
+    const lineNumbers = document.getElementById('lineNumbers');
+    const vulnTableBody = document.getElementById('vulnTableBody');
+    const resultsBadgeCount = document.getElementById('resultsBadgeCount');
+
+    // Init Editor
+    function initEditor() {
+      codeEditor.value = fileStore[activeFile] || '';
+      updateLineNumbers();
+      runSecurityScan();
+    }
+
+    function updateLineNumbers() {
+      const lines = codeEditor.value.split('\n').length;
+      lineNumbers.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+    }
+
+    codeEditor.addEventListener('input', () => {
+      fileStore[activeFile] = codeEditor.value;
+      updateLineNumbers();
+      runSecurityScan();
+    });
+
+    codeEditor.addEventListener('scroll', () => {
+      lineNumbers.scrollTop = codeEditor.scrollTop;
+    });
+
+    // File Tabs Switching
+    document.getElementById('fileTabs').addEventListener('click', (e) => {
+      const btn = e.target.closest('.file-tab');
+      if (!btn) return;
+      const file = btn.dataset.file;
+      if (file && fileStore[file] !== undefined) {
+        document.querySelectorAll('.file-tab').forEach(t => {
+          t.classList.remove('active', 'bg-[#111827]', 'border-t-2', 'border-blue-500', 'text-white');
+          t.classList.add('text-gray-400');
+        });
+        btn.classList.add('active', 'bg-[#111827]', 'border-t-2', 'border-blue-500', 'text-white');
+        btn.classList.remove('text-gray-400');
+        activeFile = file;
+        codeEditor.value = fileStore[activeFile];
+        updateLineNumbers();
+        runSecurityScan();
+      }
+    });
+
+    // --- SECURITY SCAN ENGINE LOGIC ---
+    function runSecurityScan() {
+      vulnerabilities = [];
+
+      // Scan all files in store
+      Object.keys(fileStore).forEach(filename => {
+        const content = fileStore[filename];
+        const lines = content.split('\n');
+
+        lines.forEach((lineText, lineIdx) => {
+          SECURITY_RULES.forEach(rule => {
+            rule.regex.lastIndex = 0; // reset
+            let match;
+            if ((match = rule.regex.exec(lineText)) !== null) {
+              vulnerabilities.push({
+                id: rule.id,
+                severity: rule.severity,
+                type: rule.type,
+                file: filename,
+                line: lineIdx + 1,
+                description: rule.description,
+                recommendation: rule.recommendation,
+                vulnerableSnippet: lineText.trim(),
+                secureExample: rule.secureExample
+              });
+            }
+          });
+        });
+      });
+
+      renderSummary();
+      renderTable();
+      renderCharts();
+      if (vulnerabilities.length > 0) {
+        if (selectedVulnIndex >= vulnerabilities.length) selectedVulnIndex = 0;
+        selectVulnerability(selectedVulnIndex);
+      } else {
+        renderEmptyDetails();
+      }
+    }
+
+    // Render Metrics
+    function renderSummary() {
+      const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+      vulnerabilities.forEach(v => {
+        if (counts[v.severity] !== undefined) counts[v.severity]++;
+      });
+
+      document.getElementById('countCritical').textContent = counts.Critical;
+      document.getElementById('countHigh').textContent = counts.High;
+      document.getElementById('countMedium').textContent = counts.Medium;
+      document.getElementById('countLow').textContent = counts.Low;
+
+      const total = vulnerabilities.length;
+      document.getElementById('statTotalIssues').textContent = total;
+      resultsBadgeCount.textContent = total;
+
+      // Progress bar fill proportional to critical/high ratio
+      const critHigh = counts.Critical + counts.High;
+      const fillPct = total > 0 ? Math.min(100, Math.round((critHigh / total) * 100)) : 0;
+      document.getElementById('statProgressBar').style.width = `${fillPct}%`;
+
+      // Stats
+      document.getElementById('statFilesScanned').textContent = Object.keys(fileStore).length;
+      
+      let totalLines = 0;
+      Object.values(fileStore).forEach(c => totalLines += c.split('\n').length);
+      document.getElementById('statLinesOfCode').textContent = totalLines.toLocaleString();
+    }
+
+    // Render Vulnerability Table
+    function renderTable() {
+      vulnTableBody.innerHTML = '';
+      const filter = document.getElementById('tableFilter').value.toLowerCase();
+
+      const filtered = vulnerabilities.filter(v => 
+        v.type.toLowerCase().includes(filter) || 
+        v.file.toLowerCase().includes(filter) || 
+        v.description.toLowerCase().includes(filter)
+      );
+
+      if (filtered.length === 0) {
+        vulnTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500">No vulnerabilities detected! Great job.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((v, idx) => {
+        const row = document.createElement('tr');
+        row.className = `cursor-pointer hover:bg-gray-800/50 transition ${idx === selectedVulnIndex ? 'bg-blue-900/20 border-l-2 border-blue-500' : ''}`;
+        
+        let sevClass = 'bg-gray-700 text-gray-300';
+        if (v.severity === 'Critical') sevClass = 'bg-red-500/20 text-red-400 border border-red-500/30';
+        else if (v.severity === 'High') sevClass = 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
+        else if (v.severity === 'Medium') sevClass = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+        else if (v.severity === 'Low') sevClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+        row.innerHTML = `
+          <td class="py-2.5 px-3 text-center text-gray-500 font-mono text-[11px]">${idx + 1}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${sevClass}">${v.severity}</span>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-white">${v.type}</td>
+          <td class="py-2.5 px-3 text-blue-400">${v.file}</td>
+          <td class="py-2.5 px-3 text-center text-yellow-400">${v.line}</td>
+          <td class="py-2.5 px-3 text-gray-400 truncate max-w-xs">${v.description}</td>
+        `;
+
+        row.addEventListener('click', () => {
+          selectVulnerability(idx);
+          // If row clicked belongs to different file, switch tab
+          if (v.file !== activeFile && fileStore[v.file]) {
+            const tabBtn = document.querySelector(`.file-tab[data-file="${v.file}"]`);
+            if (tabBtn) tabBtn.click();
+          }
+        });
+
+        vulnTableBody.appendChild(row);
+      });
+    }
+
+    function selectVulnerability(idx) {
+      selectedVulnIndex = idx;
+      const v = vulnerabilities[idx];
+      if (!v) return;
+
+      // Update table active row UI
+      Array.from(vulnTableBody.children).forEach((tr, i) => {
+        if (i === idx) {
+          tr.classList.add('bg-blue-900/20', 'border-l-2', 'border-blue-500');
+        } else {
+          tr.classList.remove('bg-blue-900/20', 'border-l-2', 'border-blue-500');
+        }
+      });
+
+      // Update Detail Inspector
+      document.getElementById('detailTitle').textContent = `Issue: ${v.type}`;
+      document.getElementById('detailFile').textContent = v.file;
+      document.getElementById('detailLine').textContent = v.line;
+      
+      const badge = document.getElementById('detailSeverityBadge');
+      badge.textContent = v.severity;
+      badge.className = `px-1.5 py-0.5 rounded border ${
+        v.severity === 'Critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+        v.severity === 'High' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+        v.severity === 'Medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+      }`;
+
+      document.getElementById('detailHeaderMeta').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${v.severity}`;
+      document.getElementById('detailDescription').textContent = v.description;
+      document.getElementById('detailVulnerableCode').textContent = v.vulnerableSnippet;
+      document.getElementById('detailFixSuggestion').textContent = v.recommendation;
+      document.getElementById('detailSecureCode').textContent = v.secureExample;
+    }
+
+    function renderEmptyDetails() {
+      document.getElementById('detailTitle').textContent = 'No Issues Selected';
+      document.getElementById('detailFile').textContent = '-';
+      document.getElementById('detailLine').textContent = '-';
+      document.getElementById('detailDescription').textContent = 'Your codebase is currently clean based on the active rule scanner.';
+      document.getElementById('detailVulnerableCode').textContent = '# No vulnerable snippet';
+      document.getElementById('detailFixSuggestion').textContent = 'Maintain secure coding practices and keep dependencies updated.';
+      document.getElementById('detailSecureCode').textContent = '# All safe';
+    }
+
+    // Chart.js Rendering
+    function renderCharts() {
+      const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+      const typeCounts = {};
+
+      vulnerabilities.forEach(v => {
+        counts[v.severity] = (counts[v.severity] || 0) + 1;
+        typeCounts[v.type] = (typeCounts[v.type] || 0) + 1;
+      });
+
+      // Donut Chart
+      const donutCtx = document.getElementById('donutChart').getContext('2d');
+      if (donutChartInstance) donutChartInstance.destroy();
+
+      donutChartInstance = new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Critical', 'High', 'Medium', 'Low'],
+          datasets: [{
+            data: [counts.Critical, counts.High, counts.Medium, counts.Low],
+            backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          cutout: '70%'
+        }
+      });
+
+      // Bar Chart
+      const barCtx = document.getElementById('barChart').getContext('2d');
+      if (barChartInstance) barChartInstance.destroy();
+
+      const barLabels = Object.keys(typeCounts);
+      const barData = Object.values(typeCounts);
+
+      barChartInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: barLabels.length ? barLabels : ['None'],
+          datasets: [{
+            data: barData.length ? barData : [0],
+            backgroundColor: '#3b82f6',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#9ca3af', fontSize: 9 }, grid: { display: false } },
+            y: { ticks: { color: '#9ca3af', fontSize: 9 }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // Search filter input listener
+    document.getElementById('tableFilter').addEventListener('input', renderTable);
+
+    // Copy to clipboard helper
+    window.copySnippet = function(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.currentTarget;
+        const original = btn.innerHTML;
+        btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Copied!`;
+        setTimeout(() => btn.innerHTML = original, 1800);
+      });
+    };
+
+    // Global Buttons & Actions
+    document.getElementById('scanFileBtn').addEventListener('click', () => {
+      runSecurityScan();
+      flashToast('Current file security scan complete!');
+    });
+
+    document.getElementById('scanProjectBtn').addEventListener('click', () => {
+      runSecurityScan();
+      flashToast('Full project vulnerability audit completed!');
+    });
+
+    document.getElementById('openFolderBtn').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.py,.txt';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = event => {
+            fileStore[file.name] = event.target.result;
+            // Add tab if not exists
+            if (!document.querySelector(`.file-tab[data-file="${file.name}"]`)) {
+              const tabContainer = document.getElementById('fileTabs');
+              const newTab = document.createElement('button');
+              newTab.dataset.file = file.name;
+              newTab.className = 'file-tab text-gray-400 hover:text-gray-200 px-3 py-1.5 text-xs font-mono flex items-center gap-2 rounded-t';
+              newTab.innerHTML = `<i class="fa-brands fa-python text-emerald-400"></i><span>${file.name}</span>`;
+              tabContainer.appendChild(newTab);
+            }
+            activeFile = file.name;
+            initEditor();
+            flashToast(`Loaded ${file.name}`);
+          };
+          reader.readAsText(file);
+        }
+      };
+      input.click();
+    });
+
+    // Report Generator Modal Logic
+    document.getElementById('generateReportBtn').addEventListener('click', () => {
+      const modal = document.getElementById('reportModal');
+      const content = document.getElementById('reportContent');
+      
+      let html = `
+        <div class="border-b border-gray-800 pb-2">
+          <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Scanned Files:</strong> ${Object.keys(fileStore).join(', ')}</p>
+          <p><strong>Total Vulnerabilities Found:</strong> <span class="text-red-400">${vulnerabilities.length}</span></p>
+        </div>
+        <div class="space-y-3 pt-2">
+      `;
+
+      vulnerabilities.forEach((v, i) => {
+        html += `
+          <div class="bg-[#0b0f19] p-3 rounded border border-gray-800 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white">#${i+1} [${v.severity}] ${v.type}</span>
+              <span class="text-gray-500">${v.file}:${v.line}</span>
+            </div>
+            <p class="text-gray-400">${v.description}</p>
+            <p class="text-emerald-400 text-[11px]">Fix: ${v.recommendation}</p>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+      content.innerHTML = html;
+      modal.classList.remove('hidden');
+    });
+
+    document.getElementById('closeReportBtn').addEventListener('click', () => {
+      document.getElementById('reportModal').classList.add('hidden');
+    });
+    document.getElementById('closeReportModalBottom').addEventListener('click', () => {
+      document.getElementById('reportModal').classList.add('hidden');
+    });
+
+    document.getElementById('downloadReportTextBtn').addEventListener('click', () => {
+      let txt = `=====================================\nAI CODE SECURITY AUDIT REPORT\nDate: ${new Date().toLocaleString()}\n=====================================\n\n`;
+      vulnerabilities.forEach((v, i) => {
+        txt += `[${i+1}] ${v.severity.toUpperCase()} - ${v.type}\nFile: ${v.file} (Line ${v.line})\nDescription: ${v.description}\nFix: ${v.recommendation}\n-------------------------------------\n`;
+      });
+      const blob = new Blob([txt], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Security-Report-${Date.now()}.txt`;
+      a.click();
+    });
+
+    // Sidebar navigation interactive tabs
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => {
+          t.classList.remove('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-600/20');
+          t.classList.add('text-gray-400');
+        });
+        tab.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-600/20');
+        tab.classList.remove('text-gray-400');
+      });
+    });
+
+    // Simple toast helper
+    function flashToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-xl text-xs z-50 transition-all duration-300 font-medium flex items-center gap-2';
+      toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${msg}`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+
+    // Boot App
+    window.onload = () => {
+      initEditor();
+    };
+  </script>
+</body>
+</html>

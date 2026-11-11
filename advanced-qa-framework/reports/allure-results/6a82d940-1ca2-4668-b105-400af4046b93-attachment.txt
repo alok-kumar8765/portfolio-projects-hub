@@ -1,0 +1,37 @@
+Found 3 accessibility violations:
+Rule Violated:
+heading-order - Ensure the order of headings is semantically correct
+	URL: https://dequeuniversity.com/rules/axe/4.12/heading-order?application=axeAPI
+	Impact Level: moderate
+	Tags: ['cat.semantics', 'best-practice']
+	Elements Affected:
+
+
+	1)	Target: h4
+		Snippet: <h4 class="subheader">This is where you can log into the secure area. Enter <em>tomsmith</em> for the username and <em>SuperSecretPassword!</em> for the password. If the information is wrong you should see error messages.</h4>
+		Messages:
+		* Heading order invalid
+Rule Violated:
+page-has-heading-one - Ensure that the page, or at least one of its frames contains a level-one heading
+	URL: https://dequeuniversity.com/rules/axe/4.12/page-has-heading-one?application=axeAPI
+	Impact Level: moderate
+	Tags: ['cat.semantics', 'best-practice']
+	Elements Affected:
+
+
+	1)	Target: html
+		Snippet: <html class="no-js" lang="en">
+		Messages:
+		* Page must have a level-one heading
+Rule Violated:
+region - Ensure all page content is contained by landmarks
+	URL: https://dequeuniversity.com/rules/axe/4.12/region?application=axeAPI
+	Impact Level: moderate
+	Tags: ['cat.keyboard', 'best-practice', 'RGAAv4', 'RGAA-9.2.1']
+	Elements Affected:
+
+
+	1)	Target: .home-link
+		Snippet: <a class="home-link" href="/" aria-label="The Internet: home"></a>
+		Messages:
+		* Some page content is not contained by landmarks

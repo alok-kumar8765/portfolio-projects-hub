@@ -1,0 +1,54 @@
+name: Enterprise QA Automation Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install --with-deps
+
+      - name: Run Pytest Suite with Allure & Parallel Execution
+        run: |
+          pytest --alluredir=reports/allure-results -n auto
+
+      - name: Upload Allure Test Results Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-${{ matrix.python-version }}
+          path: reports/allure-results
+          retention-days: 30
+      
+      - name: Run Pytest Suite with TestRail Sync
+        env:
+          TESTRAIL_URL: ${{ secrets.TESTRAIL_URL }}
+          TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
+          TESTRAIL_APIKEY: ${{ secrets.TESTRAIL_APIKEY }}
+          TESTRAIL_RUN_ID: ${{ secrets.TESTRAIL_RUN_ID }}
+        run: |
+          pytest --alluredir=reports/allure-results

@@ -1,0 +1,2 @@
+2026-11-10 15:48:58 [INFO] [api_client.py:11] - API GET request to: /secure
+2026-11-10 15:48:59 [INFO] [api_client.py:13] - API Response Status: 200

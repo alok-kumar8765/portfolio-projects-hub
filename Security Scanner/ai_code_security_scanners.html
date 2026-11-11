@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Code Security Scanner - Streamlit Edition</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts: Source Sans Pro & JetBrains Mono (Streamlit Style) -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Source Sans Pro', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            stDark: {
+              bg: '#0e1117',
+              sidebar: '#262730',
+              card: '#161b26',
+              border: '#313543',
+              accent: '#ff4b4b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0e1117; color: #fafafa; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0e1117; }
+    ::-webkit-scrollbar-thumb { background: #313543; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #414757; }
+  </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col md:flex-row overflow-x-hidden bg-[#0e1117] text-gray-100">
+
+  <!-- STREAMLIT-STYLE SIDEBAR -->
+  <aside class="w-full md:w-80 bg-[#262730] border-r border-[#313543] p-4 flex flex-col justify-between shrink-0">
+    <div class="space-y-5">
+      <!-- Title Header -->
+      <div class="flex items-center space-x-3 pb-3 border-b border-[#313543]">
+        <div class="w-9 h-9 rounded-lg bg-[#ff4b4b] flex items-center justify-center text-white shadow-lg shadow-red-500/20">
+          <i class="fa-solid fa-shield-cat text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-1">
+            Streamlit <span class="text-[#ff4b4b]">Scanner</span>
+          </h1>
+          <p class="text-[11px] text-gray-400 font-mono">Python Code Security Tool</p>
+        </div>
+      </div>
+
+      <!-- File / Folder Upload Section -->
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-[#ff4b4b]"></i> Upload Python Files / Project
+        </label>
+        
+        <div id="dropZone" class="border-2 border-dashed border-gray-600 hover:border-[#ff4b4b] bg-[#161b26] rounded-xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center group">
+          <i class="fa-solid fa-file-code text-2xl text-gray-400 group-hover:text-[#ff4b4b] mb-2 transition"></i>
+          <p class="text-xs font-medium text-gray-200">Drag & Drop `.py` files here</p>
+          <p class="text-[10px] text-gray-400 mt-1">or click to browse local files/folder</p>
+          <input type="file" id="fileUploader" multiple accept=".py" class="hidden">
+        </div>
+      </div>
+
+      <!-- Control Settings -->
+      <div class="space-y-3 pt-2 border-t border-[#313543]">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300">Scan Configuration</label>
+        
+        <div class="flex items-center justify-between text-xs bg-[#161b26] p-2.5 rounded-lg border border-[#313543]">
+          <span class="text-gray-300">Auto-scan on upload</span>
+          <input type="checkbox" id="autoScanToggle" checked class="accent-[#ff4b4b] w-4 h-4 cursor-pointer">
+        </div>
+
+        <button id="triggerScanBtn" class="w-full py-2 bg-[#ff4b4b] hover:bg-red-600 text-white font-semibold text-xs rounded-lg transition shadow-md shadow-red-500/20 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-play"></i> Run Security Scan
+        </button>
+
+        <button id="loadSampleProjectBtn" class="w-full py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold text-xs rounded-lg transition border border-gray-600 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-folder-open text-yellow-400"></i> Load Demo Vulnerable Project
+        </button>
+      </div>
+
+      <!-- File Manager List -->
+      <div class="space-y-2 pt-2 border-t border-[#313543]">
+        <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center justify-between">
+          Loaded Files (<span id="fileCountBadge">0</span>)
+        </span>
+        <div id="fileListContainer" class="space-y-1 max-h-40 overflow-y-auto font-mono text-xs"></div>
+      </div>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="pt-4 border-t border-[#313543] text-[11px] text-gray-400 font-mono flex justify-between items-center">
+      <span>Streamlit v1.32.0</span>
+      <span class="text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-circle text-[8px]"></i> Ready</span>
+    </div>
+  </aside>
+
+  <!-- STREAMLIT DASHBOARD MAIN VIEW -->
+  <main class="flex-1 p-4 md:p-6 overflow-y-auto space-y-6">
+
+    <!-- Header & Action Buttons -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#313543]">
+      <div>
+        <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+          AI Code Security Audit Dashboard
+        </h2>
+        <p class="text-xs text-gray-400 font-mono mt-1">Real-time static analysis engine running AST pattern detection</p>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="downloadReportBtn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition shadow-md flex items-center gap-2">
+          <i class="fa-solid fa-file-arrow-down"></i> Export Report
+        </button>
+      </div>
+    </div>
+
+    <!-- STREAMLIT METRICS CARDS ROW -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-[#161b26] border border-[#313543] p-4 rounded-xl shadow-md">
+        <span class="text-xs font-semibold text-gray-400 uppercase">Critical Risks</span>
+        <div class="flex items-baseline justify-between mt-2">
+          <span id="metricCritical" class="text-3xl font-bold text-red-500">0</span>
+          <span class="text-xs text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 font-mono">Action req.</span>
+        </div>
+      </div>
+
+      <div class="bg-[#161b26] border border-[#313543] p-4 rounded-xl shadow-md">
+        <span class="text-xs font-semibold text-gray-400 uppercase">High Severity</span>
+        <div class="flex items-baseline justify-between mt-2">
+          <span id="metricHigh" class="text-3xl font-bold text-orange-400">0</span>
+          <span class="text-xs text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20 font-mono">Review</span>
+        </div>
+      </div>
+
+      <div class="bg-[#161b26] border border-[#313543] p-4 rounded-xl shadow-md">
+        <span class="text-xs font-semibold text-gray-400 uppercase">Medium Severity</span>
+        <div class="flex items-baseline justify-between mt-2">
+          <span id="metricMedium" class="text-3xl font-bold text-amber-400">0</span>
+          <span class="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">Warning</span>
+        </div>
+      </div>
+
+      <div class="bg-[#161b26] border border-[#313543] p-4 rounded-xl shadow-md">
+        <span class="text-xs font-semibold text-gray-400 uppercase">Low / Info</span>
+        <div class="flex items-baseline justify-between mt-2">
+          <span id="metricLow" class="text-3xl font-bold text-emerald-400">0</span>
+          <span class="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">Info</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS & SUMMARY PANEL -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Visual Analytics -->
+      <div class="lg:col-span-7 bg-[#161b26] border border-[#313543] rounded-xl p-4 shadow-md flex flex-col justify-between">
+        <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-[#ff4b4b]"></i> Vulnerability Overview Charts
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 h-56 items-center">
+          <div class="h-full flex flex-col items-center justify-center">
+            <span class="text-xs text-gray-400 mb-2">Severity Breakdown</span>
+            <div class="w-36 h-36"><canvas id="streamlitDonut"></canvas></div>
+          </div>
+          <div class="h-full flex flex-col items-center justify-center">
+            <span class="text-xs text-gray-400 mb-2">Top Security Categories</span>
+            <div class="w-full h-36"><canvas id="streamlitBar"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Code Editor / File Viewer -->
+      <div class="lg:col-span-5 bg-[#161b26] border border-[#313543] rounded-xl p-4 shadow-md flex flex-col">
+        <div class="flex items-center justify-between pb-2 border-b border-[#313543] mb-2">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-code text-blue-400"></i> Active File Viewer
+          </h3>
+          <span id="activeFileName" class="text-xs font-mono text-yellow-400">No file loaded</span>
+        </div>
+        <textarea id="activeFileEditor" spellcheck="false" class="w-full flex-1 min-h-[200px] bg-[#0e1117] text-gray-200 p-3 rounded-lg font-mono text-xs border border-[#313543] outline-none resize-none leading-5"></textarea>
+      </div>
+    </div>
+
+    <!-- DETAILED SECURITY FINDINGS TABLE -->
+    <div class="bg-[#161b26] border border-[#313543] rounded-xl p-4 shadow-md space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#313543]">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-emerald-400"></i> Identified Vulnerabilities (<span id="vulnTableCount">0</span>)
+        </h3>
+        <input type="text" id="streamlitTableSearch" placeholder="Filter issues..." class="bg-[#0e1117] border border-[#313543] text-gray-300 text-xs px-3 py-1 rounded-lg outline-none focus:border-[#ff4b4b] w-48">
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead class="bg-[#0e1117] text-gray-400 border-b border-[#313543] font-mono">
+            <tr>
+              <th class="py-2 px-3">Severity</th>
+              <th class="py-2 px-3">Issue Category</th>
+              <th class="py-2 px-3">File</th>
+              <th class="py-2 px-3 text-center">Line</th>
+              <th class="py-2 px-3">Finding Description</th>
+              <th class="py-2 px-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="vulnTableRows" class="divide-y divide-[#313543] font-mono"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DETAILED VULNERABILITY INSPECTOR & REMEDIATION -->
+    <div class="bg-[#161b26] border border-[#313543] rounded-xl p-5 shadow-md space-y-4" id="remediationInspector">
+      <div class="border-b border-[#313543] pb-3 flex items-center justify-between">
+        <div>
+          <h3 id="inspectorTitle" class="text-base font-bold text-white">Select a vulnerability from the table above</h3>
+          <p class="text-xs text-gray-400 mt-0.5" id="inspectorMeta">Detailed remediation guidance will appear here.</p>
+        </div>
+        <span id="inspectorSeverityBadge" class="px-2.5 py-1 rounded text-xs font-semibold bg-gray-800 text-gray-400">None</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <span class="text-xs font-semibold text-red-400 flex items-center gap-1"><i class="fa-solid fa-bug"></i> Detected Vulnerable Code</span>
+          <pre id="inspectorVulnerableCode" class="bg-[#0e1117] text-red-300 p-3 rounded-lg font-mono text-xs border border-red-900/40 overflow-x-auto whitespace-pre"># No code selected</pre>
+        </div>
+        <div class="space-y-2">
+          <span class="text-xs font-semibold text-emerald-400 flex items-center gap-1"><i class="fa-solid fa-shield-check"></i> Recommended Secure Fix</span>
+          <pre id="inspectorSecureCode" class="bg-[#0e1117] text-emerald-300 p-3 rounded-lg font-mono text-xs border border-emerald-900/40 overflow-x-auto whitespace-pre"># Recommended fix snippet</pre>
+        </div>
+      </div>
+
+      <div class="bg-[#0e1117] p-3 rounded-lg border border-[#313543]">
+        <h4 class="text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Recommendation Summary</h4>
+        <p id="inspectorRecommendation" class="text-xs text-gray-400">Click any issue line in the table above to view deep-dive remediation and secure replacement code snippets.</p>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // State Store
+    let fileStore = {};
+    let activeFileName = '';
+    let vulnerabilities = [];
+    let donutChart = null;
+    let barChart = null;
+
+    const DEMO_FILES = {
+      'app.py': `import os
+import subprocess
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/run', methods=['GET'])
+def run_command():
+    cmd = request.args.get("cmd")
+    # Vulnerable to Command Injection
+    result = subprocess.check_output(cmd, shell=True)
+    return str(result)
+
+password = "admin123" # Hardcoded password
+api_key = "sk-1234567890abcdef" # Hardcoded API Token
+
+if __name__ == '__main__':
+    app.run(debug=True)`,
+      'utils.py': `def execute_eval(expr):
+    return eval(expr) # Code execution vulnerability
+
+def log_sensitive(token):
+    print("User Secret Token:", token) # Info disclosure`
+    };
+
+    const RULES = [
+      {
+        id: 'CMD_INJ', type: 'Command Injection', severity: 'Critical',
+        regex: /(subprocess\.(check_output|call|Popen|run)\(.*shell\s*=\s*True.*\)|os\.system\(|os\.popen\()/g,
+        description: 'User input executed directly in shell command. Risk of remote shell execution.',
+        recommendation: 'Set shell=False and pass command arguments as a validated list.',
+        secureExample: `import shlex\nargs = shlex.split(cmd)\nresult = subprocess.check_output(args, shell=False)`
+      },
+      {
+        id: 'EVAL_INJ', type: 'Code Injection', severity: 'Critical',
+        regex: /(eval\(|exec\()/g,
+        description: 'Dynamic Python code evaluation via eval/exec allows execution of arbitrary code strings.',
+        recommendation: 'Use ast.literal_eval() for safe literal evaluation.',
+        secureExample: `import ast\nsafe_val = ast.literal_eval(user_input)`
+      },
+      {
+        id: 'HARD_PASS', type: 'Hardcoded Password', severity: 'High',
+        regex: /(password\s*=\s*["'][^"']+["'])/g,
+        description: 'Hardcoded credentials identified in source code.',
+        recommendation: 'Retrieve secrets from environment variables or a vault.',
+        secureExample: `import os\npassword = os.getenv("DB_PASSWORD")`
+      },
+      {
+        id: 'HARD_KEY', type: 'Hardcoded API Key', severity: 'High',
+        regex: /(api_key\s*=\s*["'][^"']+["']|token\s*=\s*["']sk-[^"']+["'])/g,
+        description: 'API key or token hardcoded in repository.',
+        recommendation: 'Inject API keys through environment configurations.',
+        secureExample: `import os\napi_key = os.getenv("API_KEY")`
+      },
+      {
+        id: 'FLASK_DBG', type: 'Debug Mode Enabled', severity: 'Medium',
+        regex: /(app\.run\(.*debug\s*=\s*True.*\))/g,
+        description: 'Flask application running with debug mode active.',
+        recommendation: 'Disable debug mode for production deployments.',
+        secureExample: `app.run(debug=False)`
+      },
+      {
+        id: 'INFO_DISC', type: 'Information Exposure', severity: 'Low',
+        regex: /(print\(.*token.*|print\(.*secret.*)/gi,
+        description: 'Potential exposure of sensitive variables to standard logs.',
+        recommendation: 'Remove sensitive print statements or mask tokens.',
+        secureExample: `logger.debug("Token length: %d", len(token))`
+      }
+    ];
+
+    // File Upload Handlers
+    const dropZone = document.getElementById('dropZone');
+    const fileUploader = document.getElementById('fileUploader');
+
+    dropZone.addEventListener('click', () => fileUploader.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-[#ff4b4b]'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-[#ff4b4b]'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-[#ff4b4b]');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    fileUploader.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    function handleFiles(files) {
+      if (!files.length) return;
+      Array.from(files).forEach(file => {
+        if (file.name.endsWith('.py')) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            fileStore[file.name] = evt.target.result;
+            activeFileName = file.name;
+            updateFileList();
+            if (document.getElementById('autoScanToggle').checked) runScan();
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    document.getElementById('loadSampleProjectBtn').addEventListener('click', () => {
+      fileStore = { ...DEMO_FILES };
+      activeFileName = 'app.py';
+      updateFileList();
+      runScan();
+    });
+
+    function updateFileList() {
+      const container = document.getElementById('fileListContainer');
+      container.innerHTML = '';
+      const files = Object.keys(fileStore);
+      document.getElementById('fileCountBadge').textContent = files.length;
+
+      files.forEach(filename => {
+        const item = document.createElement('div');
+        item.className = `p-2 rounded cursor-pointer transition flex items-center justify-between ${filename === activeFileName ? 'bg-[#ff4b4b]/20 border border-[#ff4b4b]/40 text-white' : 'bg-[#161b26] text-gray-400 hover:text-white'}`;
+        item.innerHTML = `<span class="truncate"><i class="fa-brands fa-python text-yellow-400 mr-2"></i>${filename}</span>`;
+        item.onclick = () => {
+          activeFileName = filename;
+          updateFileList();
+          document.getElementById('activeFileName').textContent = activeFileName;
+          document.getElementById('activeFileEditor').value = fileStore[activeFileName] || '';
+        };
+        container.appendChild(item);
+      });
+
+      if (activeFileName && fileStore[activeFileName] !== undefined) {
+        document.getElementById('activeFileName').textContent = activeFileName;
+        document.getElementById('activeFileEditor').value = fileStore[activeFileName];
+      }
+    }
+
+    document.getElementById('activeFileEditor').addEventListener('input', (e) => {
+      if (activeFileName) {
+        fileStore[activeFileName] = e.target.value;
+        if (document.getElementById('autoScanToggle').checked) runScan();
+      }
+    });
+
+    document.getElementById('triggerScanBtn').addEventListener('click', runScan);
+
+    function runScan() {
+      vulnerabilities = [];
+      Object.keys(fileStore).forEach(filename => {
+        const lines = fileStore[filename].split('\n');
+        lines.forEach((lineText, lineIdx) => {
+          RULES.forEach(rule => {
+            rule.regex.lastIndex = 0;
+            if (rule.regex.test(lineText)) {
+              vulnerabilities.push({
+                severity: rule.severity,
+                type: rule.type,
+                file: filename,
+                line: lineIdx + 1,
+                description: rule.description,
+                recommendation: rule.recommendation,
+                vulnerableCode: lineText.trim(),
+                secureExample: rule.secureExample
+              });
+            }
+          });
+        });
+      });
+
+      renderMetrics();
+      renderCharts();
+      renderTable();
+    }
+
+    function renderMetrics() {
+      const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+      vulnerabilities.forEach(v => counts[v.severity] = (counts[v.severity] || 0) + 1);
+
+      document.getElementById('metricCritical').textContent = counts.Critical;
+      document.getElementById('metricHigh').textContent = counts.High;
+      document.getElementById('metricMedium').textContent = counts.Medium;
+      document.getElementById('metricLow').textContent = counts.Low;
+      document.getElementById('vulnTableCount').textContent = vulnerabilities.length;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('vulnTableRows');
+      tbody.innerHTML = '';
+      const filter = document.getElementById('streamlitTableSearch').value.toLowerCase();
+      const filtered = vulnerabilities.filter(v => v.type.toLowerCase().includes(filter) || v.file.toLowerCase().includes(filter));
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500">No issues found. Code base clean!</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((v, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/40 cursor-pointer transition';
+        
+        let sevClass = 'bg-gray-700 text-gray-300';
+        if (v.severity === 'Critical') sevClass = 'bg-red-500/20 text-red-400 border border-red-500/30';
+        else if (v.severity === 'High') sevClass = 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
+        else if (v.severity === 'Medium') sevClass = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+        else if (v.severity === 'Low') sevClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${sevClass}">${v.severity}</span></td>
+          <td class="py-2.5 px-3 text-white font-semibold">${v.type}</td>
+          <td class="py-2.5 px-3 text-blue-400">${v.file}</td>
+          <td class="py-2.5 px-3 text-center text-yellow-400">${v.line}</td>
+          <td class="py-2.5 px-3 text-gray-400 truncate max-w-xs">${v.description}</td>
+          <td class="py-2.5 px-3 text-right"><button class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-xs rounded text-gray-300">Inspect</button></td>
+        `;
+
+        tr.onclick = () => inspectVulnerability(v);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function inspectVulnerability(v) {
+      document.getElementById('inspectorTitle').textContent = `Issue: ${v.type}`;
+      document.getElementById('inspectorMeta').textContent = `File: ${v.file} | Line: ${v.line}`;
+      document.getElementById('inspectorVulnerableCode').textContent = v.vulnerableCode;
+      document.getElementById('inspectorSecureCode').textContent = v.secureExample;
+      document.getElementById('inspectorRecommendation').textContent = v.recommendation;
+
+      const badge = document.getElementById('inspectorSeverityBadge');
+      badge.textContent = v.severity;
+      badge.className = `px-2.5 py-1 rounded text-xs font-semibold ${
+        v.severity === 'Critical' ? 'bg-red-500/20 text-red-400' :
+        v.severity === 'High' ? 'bg-orange-500/20 text-orange-400' :
+        v.severity === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+      }`;
+    }
+
+    function renderCharts() {
+      const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+      const catCounts = {};
+      vulnerabilities.forEach(v => {
+        counts[v.severity] = (counts[v.severity] || 0) + 1;
+        catCounts[v.type] = (catCounts[v.type] || 0) + 1;
+      });
+
+      const donutCtx = document.getElementById('streamlitDonut').getContext('2d');
+      if (donutChart) donutChart.destroy();
+      donutChart = new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Critical', 'High', 'Medium', 'Low'],
+          datasets: [{
+            data: [counts.Critical, counts.High, counts.Medium, counts.Low],
+            backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981'],
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '70%' }
+      });
+
+      const barCtx = document.getElementById('streamlitBar').getContext('2d');
+      if (barChart) barChart.destroy();
+      barChart = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(catCounts).length ? Object.keys(catCounts) : ['Clean'],
+          datasets: [{ data: Object.values(catCounts).length ? Object.values(catCounts) : [0], backgroundColor: '#ff4b4b', borderRadius: 4 }]
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { ticks: { color: '#9ca3af', font: { size: 9 } }, grid: { display: false } }, y: { ticks: { color: '#9ca3af', font: { size: 9 } }, grid: { display: false } } }
+        }
+      });
+    }
+
+    document.getElementById('streamlitTableSearch').addEventListener('input', renderTable);
+
+    document.getElementById('downloadReportBtn').addEventListener('click', () => {
+      let report = `STREAMLIT AI CODE SECURITY AUDIT REPORT\nGenerated: ${new Date().toLocaleString()}\nFiles Scanned: ${Object.keys(fileStore).join(', ')}\nTotal Issues: ${vulnerabilities.length}\n\n`;
+      vulnerabilities.forEach((v, i) => {
+        report += `[${i+1}] [${v.severity}] ${v.type}\nFile: ${v.file}:${v.line}\nFinding: ${v.description}\nFix: ${v.recommendation}\n-----------------------------------\n`;
+      });
+      const blob = new Blob([report], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Streamlit_Security_Report_${Date.now()}.txt`;
+      a.click();
+    });
+
+    // Auto load demo on initialization
+    window.onload = () => {
+      fileStore = { ...DEMO_FILES };
+      activeFileName = 'app.py';
+      updateFileList();
+      runScan();
+    };
+  </script>
+</body>
+</html>

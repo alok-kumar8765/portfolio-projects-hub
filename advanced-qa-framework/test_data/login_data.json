@@ -1,0 +1,28 @@
+{
+  "login_scenarios": [
+    {
+      "test_id": "TC01_Valid_Login",
+      "username": "tomsmith",
+      "password": "SuperSecretPassword!",
+      "expected_url_part": "secure",
+      "expected_message": "You logged into a secure area!",
+      "is_success": true
+    },
+    {
+      "test_id": "TC02_Invalid_Password",
+      "username": "tomsmith",
+      "password": "WrongPassword123",
+      "expected_url_part": "login",
+      "expected_message": "Your password is invalid!",
+      "is_success": false
+    },
+    {
+      "test_id": "TC03_Invalid_Username",
+      "username": "hacker_user",
+      "password": "SuperSecretPassword!",
+      "expected_url_part": "login",
+      "expected_message": "Your username is invalid!",
+      "is_success": false
+    }
+  ]
+}

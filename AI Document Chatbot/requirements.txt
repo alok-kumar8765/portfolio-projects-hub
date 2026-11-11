@@ -1,0 +1,12 @@
+streamlit
+langchain
+langchain-google-genai
+langchain-community
+langchai_text_splitter
+langchain_community
+faiss-cpu
+pypdf
+pdfplumber
+google-generativeai
+rank_bm25
+python-dotenv

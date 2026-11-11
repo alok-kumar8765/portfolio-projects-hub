@@ -1,0 +1,4 @@
+2026-11-10 15:44:45 [INFO] [test_auth.py:21] - Executing test scenario: TC03_Invalid_Username with user: hacker_user
+2026-11-10 15:44:45 [INFO] [base_page.py:9] - Navigating to: https://the-internet.herokuapp.com/login
+2026-11-10 15:44:49 [INFO] [test_auth.py:21] - Executing test scenario: TC03_Invalid_Username with user: hacker_user
+2026-11-10 15:44:49 [INFO] [base_page.py:9] - Navigating to: https://the-internet.herokuapp.com/login
